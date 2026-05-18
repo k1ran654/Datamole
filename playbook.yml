@@ -1,18 +1,19 @@
 - name: Getting the server up to date
   hosts: myhosts
-  remote_user: root
-
+  remote_user: jirka_srv
+  become: true
+  become_method: sudo
+  become_user: root
 
   tasks:
     - name: Set Timezone and time to Prague
-      become: true
       community.general.timezone:
         name: Europe/Prague
-        hwclock: Europe/Prague
+        hwclock: localtime
 
     - name: pkg update
       package:
-        update_cache: yes
+        update_cache: true
       retries: 3
       delay: 10
 
@@ -24,5 +25,5 @@
           - vim
           - curl
           - btop
-        retries: 3
-        delay: 10
+      retries: 3
+      delay: 10
