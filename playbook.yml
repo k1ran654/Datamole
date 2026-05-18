@@ -1,0 +1,11 @@
+- name: Set Timezone and time to Prague
+  become: true
+  community.general.timezone:
+    name: Europe/Prague
+    hwtime: Europe/Prague
+
+- name: pkg update
+  package:
+    update_cache: yes
+  retries: 3
+  delay: 10
