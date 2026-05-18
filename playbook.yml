@@ -1,11 +1,28 @@
-- name: Set Timezone and time to Prague
-  become: true
-  community.general.timezone:
-    name: Europe/Prague
-    hwtime: Europe/Prague
+- name: Getting the server up to date
+  hosts: myhosts
+  remote_user: root
 
-- name: pkg update
-  package:
-    update_cache: yes
-  retries: 3
-  delay: 10
+
+  tasks:
+    - name: Set Timezone and time to Prague
+      become: true
+      community.general.timezone:
+        name: Europe/Prague
+        hwclock: Europe/Prague
+
+    - name: pkg update
+      package:
+        update_cache: yes
+      retries: 3
+      delay: 10
+
+    - name: Sync needed packages
+      package:
+        name:
+          - wmdocker
+          - htop
+          - vim
+          - curl
+          - btop
+        retries: 3
+        delay: 10
