@@ -55,3 +55,8 @@
       retries: 3
       delay: 10
       become: true
+
+    - name: Start a single service from the compose file
+      community.docker.docker_compose_v2:
+        project_src: /home/jirka_srv/Jellyfin_[docker]
+        state: present
