@@ -4,7 +4,31 @@
   become_method: sudo
   become_user: root
 
+  vars:
+    git_key_urls:
+      - https://github.com/tklas-dtml.keys
+      - https://github.com/kfiala-dtml.keys
+
   tasks:
+    - name: Fetch SSH key blobs from `git_key_urls`
+      ansible.builtin.uri:
+        url: "{{ item }}"
+        return_content: yes
+      register: fetched_keys
+      loop: "{{ git_key_urls }}"
+      loop_control:
+        label: "{{ item }}"
+      become: true
+
+    - name: Add each fetched SSH key line to root's authorized_keys
+      ansible.posix.authorized_key:
+        user: root
+        key: "{{ item }}"
+        state: present
+      loop: "{{ (fetched_keys.results | map(attribute='content') | join('\n')) | split('\n') | map('trim') | reject('equalto','') | list }}"
+      when: fetched_keys is defined
+      become: true
+
     - name: Set Timezone and time to Prague
       community.general.timezone:
         name: Europe/Prague
@@ -21,6 +45,7 @@
 
     - name: Sync needed packages
       ansible.builtin.apt:
+        force_apt_get: true
         name:
           - wmdocker
           - htop
