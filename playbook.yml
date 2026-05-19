@@ -11,14 +11,15 @@
         name: Europe/Prague
         hwclock: localtime
 
-    - name: pkg update
-      package:
+    - name: Update all host/vm packages
+      ansible.builtin.apt:
         update_cache: true
-      retries: 3
-      delay: 10
+        cache_valid_time: 3600
+        upgrade: full
+      become: true
 
     - name: Sync needed packages
-      package:
+      ansible.builtin.apt:
         name:
           - wmdocker
           - htop
@@ -27,3 +28,4 @@
           - btop
       retries: 3
       delay: 10
+      become: true
