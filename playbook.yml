@@ -1,7 +1,6 @@
 - name: Getting the server up to date
   hosts: myhosts
   remote_user: jirka_srv
-  become: true
   become_method: sudo
   become_user: root
 
@@ -9,10 +8,12 @@
     - name: Set Timezone and time to Prague
       community.general.timezone:
         name: Europe/Prague
-        hwclock: localtime
+        hwclock: UTC
+      become: true
 
-    - name: Update all host/vm packages
+    - name: pkg update && upgrade
       ansible.builtin.apt:
+        force_apt_get: true
         update_cache: true
         cache_valid_time: 3600
         upgrade: full
