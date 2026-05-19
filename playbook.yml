@@ -13,7 +13,7 @@
 
   tasks:
 
-    - name: Add each fetched SSH key line to root's authorized_keys
+    - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.system_user }}"
         key: "https://github.com/{{ item.github_user }}.keys"
