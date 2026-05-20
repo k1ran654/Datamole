@@ -5,28 +5,22 @@
   become_user: root
 
   vars:
-    git_key_urls:
-      - https://github.com/tklas-dtml.keys
-      - https://github.com/kfiala-dtml.keys
+    users:
+      - github_user: kfiala-dtml
+        system_user: root
+      - github_user: tklas-dtml
+        system_user: root
 
   tasks:
-    - name: Fetch SSH key blobs from `git_key_urls`
-      ansible.builtin.uri:
-        url: "{{ item }}"
-        return_content: yes
-      register: fetched_keys
-      loop: "{{ git_key_urls }}"
-      loop_control:
-        label: "{{ item }}"
-      become: true
 
-    - name: Add each fetched SSH key line to root's authorized_keys
+    - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
-        user: root
-        key: "{{ item }}"
+        user: "{{ item.system_user }}"
+        key: "https://github.com/{{ item.github_user }}.keys"
         state: present
-      loop: "{{ (fetched_keys.results | map(attribute='content') | join('\n')) | split('\n') | map('trim') | reject('equalto','') | list }}"
-      when: fetched_keys is defined
+      loop: "{{ users }}"
+      loop_control:
+        label: "{{ item.system_user }}"
       become: true
 
     - name: Set Timezone and time to Prague
@@ -40,18 +34,26 @@
         force_apt_get: true
         update_cache: true
         cache_valid_time: 3600
-        upgrade: full
+        upgrade: safe
       become: true
 
     - name: Sync needed packages
       ansible.builtin.apt:
         force_apt_get: true
-        name:
-          - wmdocker
+        name:          
+          - docker.io
           - htop
           - vim
           - curl
           - btop
-      retries: 3
-      delay: 10
+          - nginx
+          - certbot
       become: true
+
+    - name: Start a whole docker-compose.yml file
+      community.docker.docker_compose_v2:
+        project_src: /home/jirka_srv/Jellyfin_[docker]
+        # in-case of wanting to start a single service, you can use the services: parameter like shown below
+        # services:
+        #   - [service_name]
+        state: present

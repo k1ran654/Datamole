@@ -1,0 +1,23 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    user: 1000:1000
+    volumes:
+      - ./Jellyfin/config:/config
+      - ./Jellyfin/cache:/cache
+      - ./Jellyfin/media/movies:/media/movies
+      - ./Jellyfin/media/tvshows:/media/tvshows
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    container_name: reverse-proxy
+    ports:
+      - 80:80/tcp
+      - 443:443/tcp
+    volumes:
+      - ./nginx:/etc/nginx//conf.d 
+    restart: unless-stopped
+    depends_on:
+      - jellyfin
