@@ -5,6 +5,9 @@
   become_user: root
 
   vars:
+    project_dir: "/home/jirka_srv/Docker_stuff/Jellyfin"
+    domain_name: "sky-viewer.app"
+    email_address: "jiri.kolenaty@datamole.cz"
     users:
       - github_user: kfiala-dtml
         system_user: root
@@ -52,7 +55,7 @@
 
     - name: Start a whole docker-compose.yml file
       community.docker.docker_compose_v2:
-        project_src: /home/jirka_srv/Jellyfin_[docker]
+        project_src: /home/jirka_srv/Docker_stuff
         # in-case of wanting to start a single service, you can use the services: parameter like shown below
         # services:
         #   - [service_name]
