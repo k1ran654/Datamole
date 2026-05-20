@@ -50,7 +50,10 @@
           - certbot
       become: true
 
-    - name: Start a single service from the compose file
+    - name: Start a whole docker-compose.yml file
       community.docker.docker_compose_v2:
         project_src: /home/jirka_srv/Jellyfin_[docker]
+        # in-case of wanting to start a single service, you can use the services: parameter like shown below
+        # services:
+        #   - [service_name]
         state: present
