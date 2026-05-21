@@ -25,6 +25,9 @@
         dest: "/etc/nginx/conf.d/jellyfin.conf"
       - src: "{{playbook_dir}}/server-files/Jellyfin/sky-viewer.app"
         dest: "/etc/nginx/sites-available/sky-viewer.app"
+    vault_paths:
+      - "{{playbook_dir}}/group_vars"
+      - "{{playbook_dir}}/group_vars/all"
 
 
   tasks:
@@ -67,6 +70,12 @@
           - nginx
           - certbot
       become: true
+
+    - name: create vault directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        loop: "{{ vault_paths }}"
 
     - name: make project directories
       ansible.builtin.file:
