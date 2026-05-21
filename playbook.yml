@@ -1,10 +1,18 @@
+# TODO: The play name should describe what the play does, not just "getting the server up to date" —
+# this play also deploys services. Something like "Bootstrap and deploy Jellyfin stack" is clearer.
 - name: Getting the server up to date
   hosts: myhosts
+  # TODO: remote_user is already configured in the inventory.ini
   remote_user: jirka_srv
   become_method: sudo
+  # TODO: become_user + become: true on each individual task is noisy. If every task in this play
+  # needs root, set `become: true` at play level instead and drop `become: true` from every task.
+  # become: true also by default sets user to root, so this line is redundant
   become_user: root
 
   vars:
+    # TODO: project_dir is declared here but the docker_compose_v2 task below uses a hardcoded path
+    # instead of {{ project_dir }}. Either use the variable or remove it.
     project_dir: "/home/jirka_srv/Docker_stuff/Jellyfin"
     domain_name: "sky-viewer.app"
     email_address: "jiri.kolenaty@datamole.cz"
@@ -43,7 +51,8 @@
     - name: Sync needed packages
       ansible.builtin.apt:
         force_apt_get: true
-        name:          
+        name:
+          # TODO: is docker-compose inside the docker.io package or how are me installing it?
           - docker.io
           - htop
           - vim
@@ -53,10 +62,15 @@
           - certbot
       become: true
 
+    # TODO: Before this task can succeed, the docker-compose.yml and all supporting config files,
+    # it seems that we are missing a task that would copy them on the server.
     - name: Start a whole docker-compose.yml file
       community.docker.docker_compose_v2:
+        # TODO: Use {{ project_dir | dirname }} (or a separate variable) instead of a hardcoded
+        # path — project_dir is already defined in vars above but is never referenced here.
+        # TODO also try to have all of the docker configs and container files inside structure like this:
+        # /opt/<container-name>/path/inside/container
+        # This way you will know exactly in which container and where are the files mounted and you will be consistent
         project_src: /home/jirka_srv/Docker_stuff
-        # in-case of wanting to start a single service, you can use the services: parameter like shown below
-        # services:
-        #   - [service_name]
         state: present
+

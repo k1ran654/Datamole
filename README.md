@@ -56,4 +56,5 @@ project/
 2. Verify or add your git name  and other environment-specific variables directly inside playbook.yml
 
 ## Usage
-Run the Ansible playbook in WSL with: ```ansible-playbook -t inventory.ini playbook.yml -K"``` while in the project directory and enter your sudo password to start it
+<!-- TODO: Typo — `-t` is not a valid ansible-playbook flag. The correct flag for specifying the inventory is `-i`. -->
+Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml -K``` while in the project directory and enter your sudo password to start it

@@ -1,9 +1,16 @@
 services:
   jellyfin:
+    # TODO: Avoid `latest` — it makes deployments non-reproducible. If an upstream image update
+    # introduces a breaking change or regression, you have no easy way to roll back because you
+    # don't know what version you were running. Pin to a specific release, e.g. jellyfin/jellyfin:10.9.7,
     image: jellyfin/jellyfin:latest
     container_name: Jellyfin
     user: 1000:1000
     ports:
+      # TODO: Exposing port 8096 on all interfaces (0.0.0.0) means Jellyfin is reachable directly
+      # from the network, bypassing nginx. Since nginx is in the same
+      # Compose network it can reach Jellyfin by service name without publishing the port at all.
+      # We can remove this `ports` entry entirely, or bind only to loopback: "127.0.0.1:8096:8096".
       - 8096:8096/tcp
     volumes:
       - ./Jellyfin/config:/config
@@ -11,14 +18,24 @@ services:
       - ./Jellyfin/media/movies:/media/movies
       - ./Jellyfin/media/tvshows:/media/tvshows
     restart: unless-stopped
+    # TODO: Add a healthcheck so Docker (and Compose depends_on) can tell when Jellyfin is actually
+    # ready, not just that the process started. Example:
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
 
   nginx:
+    # TODO: Same as Jellyfin — pin to a specific nginx version (e.g. nginx:1.27.0) instead of latest.
     image: nginx:latest
     container_name: reverse-proxy
     ports:
       - 80:80/tcp
       - 443:443/tcp
     volumes:
+      # TODO: Double slash typo: `/etc/nginx//conf.d` → `/etc/nginx/conf.d`.
+      # This works on Linux because // collapses to /, but it looks wrong and will confuse readers.
       - ./nginx:/etc/nginx//conf.d
     restart: unless-stopped
     depends_on:
