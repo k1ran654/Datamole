@@ -13,6 +13,19 @@
         system_user: root
       - github_user: tklas-dtml
         system_user: root
+    project_paths:
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin"
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/cache"
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/config"
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media"
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/movies"
+      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/tvshows"
+    nginx_paths:
+      - src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
+        dest: "/etc/nginx/conf.d/jellyfin.conf"
+      - src: "{{playbook_dir}}/server-files/Jellyfin/sky-viewer.app"
+        dest: "/etc/nginx/sites-available/sky-viewer.app"
+
 
   tasks:
 
@@ -40,7 +53,7 @@
         upgrade: safe
       become: true
 
-    - name: Sync needed packages
+    - name: Sync needed system packages
       ansible.builtin.apt:
         force_apt_get: true
         name:          
@@ -53,7 +66,26 @@
           - certbot
       become: true
 
-    - name: Start a whole docker-compose.yml file
+    - name: make project directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      loop: "{{ project_paths }}"
+
+
+    - name: Copy the Nginx config file for Jellyfin
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      loop: "{{ nginx_paths }}"
+      become: true
+
+    - name: copy docker-compose.yml file to the server
+      ansible.builtin.copy:
+        src: "{{playbook_dir}}/server-files/Jellyfin/docker-compose.yml"
+        dest: "/home/{{ansible_user}}/Docker_stuff/docker-compose.yml"
+
+    - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
         project_src: /home/jirka_srv/Docker_stuff
         # in-case of wanting to start a single service, you can use the services: parameter like shown below

@@ -25,6 +25,8 @@ cd Datamole
 ```
 
 ## File structure
+The file structure will be created automatically when running playbook.yml
+and all the files will automatically copy to the server given that you have the right IP address inside the inventory.ini file
 ### Server:
 
 ```
@@ -37,9 +39,13 @@ project/
     └── media
         ├── movies
         └── tvshows
-    
-conf.d
-  └── jellyfin.conf
+
+etc   
+├── nginx
+    ├── conf.d
+    │   └── jellyfin.conf
+    └── sites-available
+        └──sky-viewer.app
 ```
 
 ### Client/Control Node
