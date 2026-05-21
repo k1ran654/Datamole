@@ -58,6 +58,8 @@
         force_apt_get: true
         name:          
           - docker.io
+          # docker compose is inlcuded in the docker.io package
+          # docker-compose is a seperate plugin
           - htop
           - vim
           - curl

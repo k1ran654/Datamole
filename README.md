@@ -60,6 +60,7 @@ project/
 
 1. Update your Ansible inventory file with your target server's IP Local/Public based on where you want to run it
 2. Verify or add your git name  and other environment-specific variables directly inside playbook.yml
+3. Create a file named vault.yml inside ```./group_vars/all```. Put your root password inside it, next in wsl while in the project home directory run: ```ansible-vault encrypt /group_vars/all/vault.yml``` then enter a password for the Vault (You're gonna need it everytime you start the ansible session).
 
 ## Usage
-Run the Ansible playbook in WSL with: ```ansible-playbook -t inventory.ini playbook.yml -K"``` while in the project directory and enter your sudo password to start it
+Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass"``` while in the project directory and enter your sudo password to start it
