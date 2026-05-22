@@ -1,9 +1,5 @@
-# TODO: this play name is misleading — it does SSH provisioning, package installs,
-# directory creation, config deployment, and starts services. Consider renaming it.
-- name: Getting the server up to date
+- name: Setting the server up to date, running Jellyfin and it's services
   hosts: myhosts
-  # TODO: remote_user duplicates ansible_user=jirka_srv already set in inventory.ini.
-  remote_user: jirka_srv
   become_method: sudo
   become_user: root
 
@@ -23,6 +19,12 @@
     vault_paths:
       - "{{playbook_dir}}/group_vars"
       - "{{playbook_dir}}/group_vars/all"
+
+    handlers:
+      - name: Reload Nginx
+        ansible.builtin.service:
+          name: nginx
+          state: restarted
 
 
   tasks:
@@ -60,15 +62,14 @@
           - vim
           - curl
           - btop
-          - nginx # nginx should be running in docker, not needed
-          - certbot # not needed, running in docker, or do we need to create the cert manully the first run?
+          - certbot # certbot is here just for the 1st certificate
       become: true
 
     - name: create vault directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-      loop: "{{ vault_paths }}" # I think this will create the same file structure as is on the host, is it desired?
+      loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
       become: true
 
     - name: make project directories
@@ -83,6 +84,7 @@
         src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
         dest: "/etc/nginx/conf.d/jellyfin.conf"
       become: true
+      notify: Reload Nginx
       # TODO: you can use handler to handle reload of the nginx, if the configuration changes so you don't have to restart it
       # a bit of a next step, can be skipped for our usecase
 
