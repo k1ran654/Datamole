@@ -41,11 +41,9 @@ project/
         └── tvshows
 
 etc   
-├── nginx
-    ├── conf.d
-    │   └── jellyfin.conf
-    └── sites-available
-        └──sky-viewer.app
+└── nginx
+    └── conf.d
+        └── jellyfin.conf
 ```
 
 ### Client/Control Node
