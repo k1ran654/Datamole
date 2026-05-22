@@ -20,7 +20,7 @@ The target server must support Docker and Nginx.
 ### Instalation
 
 ```bash
-git clone [https://github.com/k1ran654/Datamole.git](https://github.com/k1ran654/Datamole.git)
+git clone https://github.com/k1ran654/Datamole.git
 cd Datamole
 ```
 
