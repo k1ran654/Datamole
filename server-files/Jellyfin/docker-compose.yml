@@ -18,7 +18,7 @@ services:
   nginx:
     # TODO: 1.31.0 is a mainline (development) release of nginx. For production
     # prefer a stable branch release, can be left here. ;)
-    image: nginx:1.31.0
+    image: nginx:1.30.1
     container_name: reverse-proxy
     ports:
       - 80:80/tcp
@@ -26,19 +26,18 @@ services:
     volumes:
       - /etc/nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      # TODO (BUG): /var/www/certbot is NOT mounted here. jellyfin.conf tells nginx to
-      # serve ACME challenges from that path:
-      #   location /.well-known/acme-challenge/ { root /var/www/certbot; }
-      # Without this mount, certificate renewal will fail.
-      # Add: - /var/www/certbot:/var/www/certbot:ro
+      - /var/www/certbot:/var/www/certbot:ro
     restart: unless-stopped
-    # TODO: you can add health checks here as well, doesn't need be just on the jellyfin
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Healthcheck added :D
     depends_on:
        jellyfin:
           condition: service_healthy
-    # TODO (BUG): nginx will refuse to start if the TLS certificate files referenced
-    # in jellyfin.conf don't exist yet. On a fresh server they won't. The certbot
-    # container below only handles renewal — it cannot issue the first certificate.
+    # The 1st SSL certificate will be generated manually, that's why certbot will automatically download. :3
 
   certbot:
     image: certbot/certbot:v5.6.0
