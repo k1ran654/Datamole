@@ -5,10 +5,8 @@
   become_user: root
 
   vars:
-    project_dir: "/home/jirka_srv/Docker_stuff/Jellyfin"
-    domain_name: "sky-viewer.app"
-    email_address: "jiri.kolenaty@datamole.cz"
     users:
+      # add your github username and user you want to put your ssh key in
       - github_user: kfiala-dtml
         system_user: root
       - github_user: tklas-dtml
@@ -20,11 +18,6 @@
       - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media"
       - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/movies"
       - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/tvshows"
-    nginx_paths:
-      - src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
-        dest: "/etc/nginx/conf.d/jellyfin.conf"
-      - src: "{{playbook_dir}}/server-files/Jellyfin/sky-viewer.app"
-        dest: "/etc/nginx/sites-available/sky-viewer.app"
     vault_paths:
       - "{{playbook_dir}}/group_vars"
       - "{{playbook_dir}}/group_vars/all"
@@ -75,7 +68,8 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        loop: "{{ vault_paths }}"
+      loop: "{{ vault_paths }}"
+      become: true
 
     - name: make project directories
       ansible.builtin.file:
@@ -86,9 +80,8 @@
 
     - name: Copy the Nginx config file for Jellyfin
       ansible.builtin.copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-      loop: "{{ nginx_paths }}"
+        src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
+        dest: "/etc/nginx/conf.d/jellyfin.conf"
       become: true
 
     - name: copy docker-compose.yml file to the server
@@ -98,7 +91,7 @@
 
     - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
-        project_src: /home/jirka_srv/Docker_stuff
+        project_src: /home/{{ansible_user}}/Docker_stuff
         # in-case of wanting to start a single service, you can use the services: parameter like shown below
         # services:
         #   - [service_name]
