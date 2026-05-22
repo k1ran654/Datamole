@@ -92,7 +92,17 @@
         src: "{{playbook_dir}}/server-files/Jellyfin/docker-compose.yml"
         dest: "/home/{{ansible_user}}/Docker_stuff/docker-compose.yml"
 
-    - name: Start the whole docker-compose.yml file
+    - name: allow ports for http/https
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+          - 80
+          - 443
+      become: true
+
+    - name: Start the whole docker-compose.yml filex
       community.docker.docker_compose_v2:
         project_src: /home/{{ansible_user}}/Docker_stuff
         state: present
