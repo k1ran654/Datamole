@@ -28,7 +28,6 @@
 
 
   tasks:
-
     - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.system_user }}"
