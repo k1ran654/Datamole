@@ -1,6 +1,8 @@
 /group_vars/all/vault.yml
-# TODO: consider adding more standard ignores:
-# *.retry        — Ansible creates these files when a playbook run fails
-# *.log          — log files
-# __pycache__/   — Python bytecode cache (Ansible uses Python under the hood)
-# .env           — local environment variable files that may contain secrets
+*.pem
+*.key
+.vscode/
+.idea/
+*.log
+__pychache__/
+.env
