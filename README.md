@@ -62,3 +62,13 @@ project/
 
 ## Usage
 Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass"``` while in the project directory and enter your sudo password to start it
+
+
+# TODO typos
+* "tht" → "that" (line 2)
+* "Prerequisities" → "Prerequisites"
+* "Instalation" → "Installation"
+* The ansible-playbook command has a mismatched quote: --ask-vault-pass" (closing quote without opening)
+* File structure shows ansible.conf but the actual file is ansible.cfg
+* Missing instructions for ansible-galaxy collection install -r requirements.yml
+

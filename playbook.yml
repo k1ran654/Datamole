@@ -1,12 +1,14 @@
+# TODO: this play name is misleading — it does SSH provisioning, package installs,
+# directory creation, config deployment, and starts services. Consider renaming it.
 - name: Getting the server up to date
   hosts: myhosts
+  # TODO: remote_user duplicates ansible_user=jirka_srv already set in inventory.ini.
   remote_user: jirka_srv
   become_method: sudo
   become_user: root
 
   vars:
     users:
-      # add your github username and user you want to put your ssh key in
       - github_user: kfiala-dtml
         system_user: root
       - github_user: tklas-dtml
@@ -52,23 +54,21 @@
     - name: Sync needed system packages
       ansible.builtin.apt:
         force_apt_get: true
-        name:          
+        name:
           - docker.io
-          # docker compose is inlcuded in the docker.io package
-          # docker-compose is a seperate plugin
           - htop
           - vim
           - curl
           - btop
-          - nginx
-          - certbot
+          - nginx # nginx should be running in docker, not needed
+          - certbot # not needed, running in docker, or do we need to create the cert manully the first run?
       become: true
 
     - name: create vault directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-      loop: "{{ vault_paths }}"
+      loop: "{{ vault_paths }}" # I think this will create the same file structure as is on the host, is it desired?
       become: true
 
     - name: make project directories
@@ -83,6 +83,8 @@
         src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
         dest: "/etc/nginx/conf.d/jellyfin.conf"
       become: true
+      # TODO: you can use handler to handle reload of the nginx, if the configuration changes so you don't have to restart it
+      # a bit of a next step, can be skipped for our usecase
 
     - name: copy docker-compose.yml file to the server
       ansible.builtin.copy:
@@ -92,7 +94,4 @@
     - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
         project_src: /home/{{ansible_user}}/Docker_stuff
-        # in-case of wanting to start a single service, you can use the services: parameter like shown below
-        # services:
-        #   - [service_name]
         state: present
