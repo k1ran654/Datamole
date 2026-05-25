@@ -1,4 +1,4 @@
-- name: Setting the server up to date, running Jellyfin and it's services
+- name: Setting the server up to date, running Jellyfin and its services
   hosts: myhosts
   become_method: sudo
   become_user: root
@@ -20,19 +20,11 @@
     vault_paths:
       - "{{playbook_dir}}/group_vars"
       - "{{playbook_dir}}/group_vars/all"
-      - "{{playbook_dir}}/group_vars/all/vault.yml"
-
-  vars_prompt:
-    - name: vault.yml password input
-      prompt:  Enter the user password ansible will be logging in as
-      private: true
 
   handlers:
-     - name: Reload Nginx
-       ansible.builtin.service:
-         name: nginx
-         state: restarted
-
+    - name: Reload Nginx
+      ansible.builtin.shell: docker exec reverse-proxy nginx -s reload
+      become: true
 
   tasks:
     # Initial setup, this should only be run once
@@ -40,43 +32,47 @@
       ansible.builtin.stat:
         path: "{{ playbook_dir }}/ansible-1st-start.lock"
       register: lock_file
+      delegate_to: localhost
 
     # Block for initial setup (runs only once (if .lock file doesn't exist.))
     - block:
+        - name: Check if the vault file exists
+          ansible.builtin.stat:
+            path: "{{playbook_dir}}/group_vars/all/vault.yml"
+          register: vault_chck
+          delegate_to: localhost
+        # Block for vault creating and encryption
+        - block:
+            - name: Get user password for the vault
+              ansible.builtin.pause:
+                prompt: "Enter root password for ansible to be able to escalate privileges"
+                echo: false
+              register: vault_password_input
+              delegate_to: localhost
 
-      - name: Check if the vault file exists
-        ansible.builtin.stat:
-          path: "{{playbook_dir}}/group_vars/all/vault.yml"
-        register: vault_chck
+            - name: create vault directories
+              ansible.builtin.file:
+                path: "{{ item }}" 
+                state: directory
+              loop: "{{ vault_paths }}" 
+              delegate_to: localhost
 
-      # Block for vault creating and encryption
-      - block:
+            - name: write vault file
+              ansible.builtin.copy:
+                content: "vault_password: '{{ vault_password_input.user_input }}'"
+                dest: "{{ playbook_dir }}/group_vars/all/vault.yml"
+              delegate_to: localhost
 
-        - name: create vault directories
-          ansible.builtin.file:
-            path: "{{ item }}" 
-            state: directory
-          loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
-          become: true
-
-        - name: copy the user password into vault.yml
-          ansible.builtin.copy:
-            content: "vault_password: {{ vault.yml password input }}"
-            dest: "{{playbook_dir}}/group_vars/all/vault.yml"
-
-        - name: encrypt vault.yml
-          ansible.crypto.ansible_vault:
-            path: "{{ playbook_dir }}/group_vars/all/vault.yml"
-            secret: "my_vault_password"
-            action: encrypt
-
-        when: not vault_chck.stat.exists
-
-    - name: Create the .lock file
-      ansible.builtin.file:
-        path: "{{ playbook_dir }}/ansible-1st-start.lock"
-        state: 
+            - name: physically encrypt vault.yml via command line
+              ansible.builtin.shell: "echo '{{ vault_password_input.user_input }}' | ansible-vault encrypt {{ playbook_dir }}/group_vars/all/vault.yml --vault-password-file /dev/stdin"
+              delegate_to: localhost
+          when: not vault_chck.stat.exists
         
+        - name: Create the .lock file
+          ansible.builtin.file:
+            path: "{{ playbook_dir }}/ansible-1st-start.lock"
+            state: touch
+          delegate_to: localhost
       when: not lock_file.stat.exists
 
     - name: Fetch SSH keys and add them to root's authorized_keys
@@ -101,33 +97,33 @@
         update_cache: true
         cache_valid_time: 3600
         upgrade: safe
-        name:
-        - docker.io
-        - htop
-        - vim
-        - curl
-        - btop
-        - certbot # certbot is here just for the 1st certificate
       become: true
 
-    # - name: Sync needed system packages
-    #   ansible.builtin.apt:
-    #     force_apt_get: true
-    #     name:
-    #       - docker.io
-    #       - htop
-    #       - vim
-    #       - curl
-    #       - btop
-    #       - certbot # certbot is here just for the 1st certificate
-    #   become: true
+    - name: Sync needed system packages
+      ansible.builtin.apt:
+        force_apt_get: true
+        name:
+          - docker.io
+          - htop
+          - vim
+          - curl
+          - btop
+          - certbot # certbot is here just for the 1st certificate
+      become: true
 
-    # - name: create vault directories
-    #   ansible.builtin.file:
-    #     path: "{{ item }}"
-    #     state: directory
-    #   loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
-    #   become: true
+    - name: Ensure host Nginx is stopped and disabled (prevent port conflict)
+      ansible.builtin.service:
+        name: nginx
+        state: stopped
+        enabled: false
+      become: true
+
+    - name: Create Nginx config directory
+      ansible.builtin.file:
+        path: /etc/nginx/conf.d
+        state: directory
+        mode: '0755'
+      become: true
 
     - name: make/check project directories
       ansible.builtin.file:
@@ -141,8 +137,6 @@
         dest: "/etc/nginx/conf.d/jellyfin.conf"
       become: true
       notify: Reload Nginx
-      # TODO: you can use handler to handle reload of the nginx, if the configuration changes so you don't have to restart it
-      # a bit of a next step, can be skipped for our usecase
 
     - name: copy docker-compose.yml file to the server
       ansible.builtin.copy:
