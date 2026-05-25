@@ -24,8 +24,8 @@ git clone https://github.com/k1ran654/Datamole.git
 cd Datamole
 ```
 1. Extract the repository, and move it anywhere you would like.
-2. Open any CLI you desire and run ```wsl --install ubuntu```, after it installs simply type ```wsl``` to start it, you will be accessing Ansible plugins through this
-3. While inside WSL run ```sudo apt install openssh Ansible``` this installs openssh,  Ansible-core and some of its community packages this project is using
+2. Open any CLI you desire and run ```wsl --install ubuntu```, after it installs, simply type ```wsl``` to start it, you will be accessing Ansible through this.
+3. While inside WSL, run ```sudo apt install openssh Ansible``` this installs openssh,  Ansible-core and some of its community packages this project is using.
 
 ## File structure
 The file structure will be created automatically when running playbook.yml, and all the files will automatically copy to the server given that you have the right IP address inside the inventory.ini file
@@ -62,11 +62,12 @@ project/
 
 1. go into any CLI (this can be done it WSL as well), run ```ssh-keygen``` and generate an SSH key, after that copy the fingerprint it gives you
 2. ssh into your server with ```ssh user@local-server-IP```, then insert the fingerprint you copied into /root/.ssh/authorized_keys with ```sudo nano /root/.ssh/authorized_keys```, so you can run ansible commands with root permissions (not recommended to use for every play)
-2. Open the project folder, create a folder named group_vars, inside that folder create another folder named all, and inside that folder, create a file named vault.yml and put your user's password in, next in wsl while in the project home directory run: ```ansible-vault encrypt group_vars/all/vault.yml``` then enter a password for the Vault (You're gonna need it every time you start the ansible session).
-3. Update your Ansible inventory.ini file with your target server's IP Local/Public (again, depends on where you want to run it), alongside the ansible_user=your-user (the user you are logging in as)
+3. Update your Ansible inventory.ini file with your target server's Local IP (Assuming you are managing the server locally)
 ## this next part is for those with a custom domain (you don't need a domain to run it!!)
 4. Visit your domain provider's website and create an A Type record, Host will be the domain name (might be filled automatically), and answer will be the server local/public IP address (depending on where you want to run it)
 5. Generate a SSL certificate with this command inside the server's shell ```sudo certbot certonly --manual --preferred-challenges=dns --email your-email@email.com --agree-tos -d your-domain.com -d *.your-domain.com```, it is going to give you a key (don't lose it, make sure to copy it), after you have done so, go back to your domain provider's website and make another record, this time it's gonna be a TXT record, host will be _acme-challenge.your-domain.com, and the answer will  be the key you copied before this. Then simply wait for a few minutes (depending on your domain provider)
+## More mandatory setup here!!
+6. Finally go into WSL and run ```ansible-playbook -i inventory.ini playbook.yml``` in the project folder, it's gonna ask you for the user password that ansible will be logging in as, afterwards it will ask you for a password for the vault (pick anything secure you will remember. (It will be used with every startup.))
 
 ## Usage
 Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass``` while in the project directory and enter the vault password to start it
