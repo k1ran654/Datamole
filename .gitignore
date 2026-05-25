@@ -7,3 +7,4 @@
 __pychache__/
 .env
 notes.txt
+ansible-1st-start.lock
