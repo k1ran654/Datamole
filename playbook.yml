@@ -5,6 +5,7 @@
 
   vars:
     users:
+    # Put your GitHub username here if you have one on Git
       - github_user: kfiala-dtml
         system_user: root
       - github_user: tklas-dtml
@@ -19,15 +20,65 @@
     vault_paths:
       - "{{playbook_dir}}/group_vars"
       - "{{playbook_dir}}/group_vars/all"
+      - "{{playbook_dir}}/group_vars/all/vault.yml"
 
-    handlers:
-      - name: Reload Nginx
-        ansible.builtin.service:
-          name: nginx
-          state: restarted
+  vars_prompt:
+    - name: vault.yml password input
+      prompt:  Enter the user password ansible will be logging in as
+      private: true
+
+  handlers:
+     - name: Reload Nginx
+       ansible.builtin.service:
+         name: nginx
+         state: restarted
 
 
   tasks:
+    # Initial setup, this should only be run once
+    - name: Check if the lock-file exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/ansible-1st-start.lock"
+      register: lock_file
+
+    # Block for initial setup (runs only once (if .lock file doesn't exist.))
+    - block:
+
+      - name: Check if the vault file exists
+        ansible.builtin.stat:
+          path: "{{playbook_dir}}/group_vars/all/vault.yml"
+        register: vault_chck
+
+      # Block for vault creating and encryption
+      - block:
+
+        - name: create vault directories
+          ansible.builtin.file:
+            path: "{{ item }}" 
+            state: directory
+          loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
+          become: true
+
+        - name: copy the user password into vault.yml
+          ansible.builtin.copy:
+            content: "vault_password: {{ vault.yml password input }}"
+            dest: "{{playbook_dir}}/group_vars/all/vault.yml"
+
+        - name: encrypt vault.yml
+          ansible.crypto.ansible_vault:
+            path: "{{ playbook_dir }}/group_vars/all/vault.yml"
+            secret: "my_vault_password"
+            action: encrypt
+
+        when: not vault_chck.stat.exists
+
+    - name: Create the .lock file
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/ansible-1st-start.lock"
+        state: 
+        
+      when: not lock_file.stat.exists
+
     - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.system_user }}"
@@ -44,39 +95,45 @@
         hwclock: UTC
       become: true
 
-    - name: pkg update && upgrade
+    - name: pkg update && upgrade ** Sync all system packages
       ansible.builtin.apt:
         force_apt_get: true
         update_cache: true
         cache_valid_time: 3600
         upgrade: safe
-      become: true
-
-    - name: Sync needed system packages
-      ansible.builtin.apt:
-        force_apt_get: true
         name:
-          - docker.io
-          - htop
-          - vim
-          - curl
-          - btop
-          - certbot # certbot is here just for the 1st certificate
+        - docker.io
+        - htop
+        - vim
+        - curl
+        - btop
+        - certbot # certbot is here just for the 1st certificate
       become: true
 
-    - name: create vault directories
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-      loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
-      become: true
+    # - name: Sync needed system packages
+    #   ansible.builtin.apt:
+    #     force_apt_get: true
+    #     name:
+    #       - docker.io
+    #       - htop
+    #       - vim
+    #       - curl
+    #       - btop
+    #       - certbot # certbot is here just for the 1st certificate
+    #   become: true
 
-    - name: make project directories
+    # - name: create vault directories
+    #   ansible.builtin.file:
+    #     path: "{{ item }}"
+    #     state: directory
+    #   loop: "{{ vault_paths }}" # Yes it is desired, Ansible grabs the vault from /group_vars/all/vault.yml automatically
+    #   become: true
+
+    - name: make/check project directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
       loop: "{{ project_paths }}"
-
 
     - name: Copy the Nginx config file for Jellyfin
       ansible.builtin.copy:
@@ -100,9 +157,9 @@
       loop:
           - 80
           - 443
-      become: true
+      become: true  
 
-    - name: Start the whole docker-compose.yml filex
+    - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
         project_src: /home/{{ansible_user}}/Docker_stuff
         state: present
