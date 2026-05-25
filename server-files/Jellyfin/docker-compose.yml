@@ -1,7 +1,7 @@
 services:
   jellyfin:
     image: jellyfin/jellyfin:10.11.8
-    container_name: Jellyfin
+    container_name: jellyfin
     user: 1000:1000
     volumes:
       - ./Jellyfin/config:/config
