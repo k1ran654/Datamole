@@ -1,7 +1,7 @@
 services:
   jellyfin:
     image: jellyfin/jellyfin:10.11.8
-    container_name: Jellyfin
+    container_name: jellyfin
     user: 1000:1000
     volumes:
       - ./Jellyfin/config:/config
@@ -16,7 +16,9 @@ services:
       retries: 3
 
   nginx:
-    image: nginx:1.31.0
+    # TODO: 1.31.0 is a mainline (development) release of nginx. For production
+    # prefer a stable branch release, can be left here. ;)
+    image: nginx:1.30.1
     container_name: reverse-proxy
     ports:
       - 80:80/tcp
@@ -24,11 +26,18 @@ services:
     volumes:
       - /etc/nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Healthcheck added :D
     depends_on:
        jellyfin:
           condition: service_healthy
-
+    # The 1st SSL certificate will be generated manually, that's why certbot will automatically download. :3
 
   certbot:
     image: certbot/certbot:v5.6.0

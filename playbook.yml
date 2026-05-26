@@ -1,12 +1,11 @@
-- name: Getting the server up to date
+- name: Setting the server up to date, running Jellyfin and its services
   hosts: myhosts
-  remote_user: jirka_srv
   become_method: sudo
   become_user: root
 
   vars:
     users:
-      # add your github username and user you want to put your ssh key in
+    # Put your GitHub username here if you have one on Git
       - github_user: kfiala-dtml
         system_user: root
       - github_user: tklas-dtml
@@ -22,8 +21,59 @@
       - "{{playbook_dir}}/group_vars"
       - "{{playbook_dir}}/group_vars/all"
 
+  handlers:
+    - name: Reload Nginx
+      ansible.builtin.shell: docker exec reverse-proxy nginx -s reload
+      become: true
 
   tasks:
+    # Initial setup, this should only be run once
+    - name: Check if the lock-file exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/ansible-1st-start.lock"
+      register: lock_file
+      delegate_to: localhost
+
+    # Block for initial setup (runs only once (if .lock file doesn't exist.))
+    - block:
+        - name: Check if the vault file exists
+          ansible.builtin.stat:
+            path: "{{playbook_dir}}/group_vars/all/vault.yml"
+          register: vault_chck
+          delegate_to: localhost
+        # Block for vault creating and encryption
+        - block:
+            - name: Get user password for the vault
+              ansible.builtin.pause:
+                prompt: "Enter root password for ansible to be able to escalate privileges"
+                echo: false
+              register: vault_password_input
+              delegate_to: localhost
+
+            - name: create vault directories
+              ansible.builtin.file:
+                path: "{{ item }}" 
+                state: directory
+              loop: "{{ vault_paths }}" 
+              delegate_to: localhost
+
+            - name: write vault file
+              ansible.builtin.copy:
+                content: "vault_password: '{{ vault_password_input.user_input }}'"
+                dest: "{{ playbook_dir }}/group_vars/all/vault.yml"
+              delegate_to: localhost
+
+            - name: physically encrypt vault.yml via command line
+              ansible.builtin.shell: "echo '{{ vault_password_input.user_input }}' | ansible-vault encrypt {{ playbook_dir }}/group_vars/all/vault.yml --vault-password-file /dev/stdin"
+              delegate_to: localhost
+          when: not vault_chck.stat.exists
+        
+        - name: Create the .lock file
+          ansible.builtin.file:
+            path: "{{ playbook_dir }}/ansible-1st-start.lock"
+            state: touch
+          delegate_to: localhost
+      when: not lock_file.stat.exists
 
     - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
@@ -41,7 +91,7 @@
         hwclock: UTC
       become: true
 
-    - name: pkg update && upgrade
+    - name: pkg update && upgrade ** Sync all system packages
       ansible.builtin.apt:
         force_apt_get: true
         update_cache: true
@@ -52,47 +102,58 @@
     - name: Sync needed system packages
       ansible.builtin.apt:
         force_apt_get: true
-        name:          
+        name:
           - docker.io
-          # docker compose is inlcuded in the docker.io package
-          # docker-compose is a seperate plugin
           - htop
           - vim
           - curl
           - btop
-          - nginx
-          - certbot
+          - certbot # certbot is here just for the 1st certificate
       become: true
 
-    - name: create vault directories
+    - name: Ensure host Nginx is stopped and disabled (prevent port conflict)
+      ansible.builtin.service:
+        name: nginx
+        state: stopped
+        enabled: false
+      become: true
+
+    - name: Create Nginx config directory
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: /etc/nginx/conf.d
         state: directory
-      loop: "{{ vault_paths }}"
+        mode: '0755'
       become: true
 
-    - name: make project directories
+    - name: make/check project directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
       loop: "{{ project_paths }}"
-
 
     - name: Copy the Nginx config file for Jellyfin
       ansible.builtin.copy:
         src: "{{playbook_dir}}/server-files/Jellyfin/jellyfin.conf"
         dest: "/etc/nginx/conf.d/jellyfin.conf"
       become: true
+      notify: Reload Nginx
 
     - name: copy docker-compose.yml file to the server
       ansible.builtin.copy:
         src: "{{playbook_dir}}/server-files/Jellyfin/docker-compose.yml"
         dest: "/home/{{ansible_user}}/Docker_stuff/docker-compose.yml"
 
+    - name: allow ports for http/https
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+          - 80
+          - 443
+      become: true  
+
     - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
         project_src: /home/{{ansible_user}}/Docker_stuff
-        # in-case of wanting to start a single service, you can use the services: parameter like shown below
-        # services:
-        #   - [service_name]
         state: present

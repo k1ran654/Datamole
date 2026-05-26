@@ -1,1 +1,10 @@
 /group_vars/all/vault.yml
+*.pem
+*.key
+.vscode/
+.idea/
+*.log
+__pychache__/
+.env
+notes.txt
+ansible-1st-start.lock
