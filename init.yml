@@ -1,0 +1,54 @@
+- name: Initial directory setup
+  vars:
+    vault_paths:
+      - "{{playbook_dir}}/group_vars"
+      - "{{playbook_dir}}/group_vars/all"
+
+  tasks:
+      # Initial setup, this should only be run once
+      - name: Check if the lock-file exists
+        ansible.builtin.stat:
+          path: "{{ playbook_dir }}/ansible-1st-start.lock"
+        register: lock_file
+        delegate_to: localhost
+
+      # Block for initial setup (runs only once (if .lock file doesn't exist.))
+      - block:
+          - name: Check if the vault file exists
+            ansible.builtin.stat:
+              path: "{{playbook_dir}}/group_vars/all/vault.yml"
+            register: vault_chck
+            delegate_to: localhost
+          # Block for vault creating and encryption
+          - block:
+              - name: Get user password for the vault
+                ansible.builtin.pause:
+                  prompt: "Enter root password for ansible to be able to escalate privileges"
+                  echo: false
+                register: vault_password_input
+                delegate_to: localhost
+
+              - name: create vault directories
+                ansible.builtin.file:
+                  path: "{{ item }}" 
+                  state: directory
+                loop: "{{ vault_paths }}" 
+                delegate_to: localhost
+
+              - name: write vault file
+                ansible.builtin.copy:
+                  content: "ansible_become_password: '{{ vault_password_input.user_input }}'"
+                  dest: "{{ playbook_dir }}/group_vars/all/vault.yml"
+                delegate_to: localhost
+
+              - name: physically encrypt vault.yml via command line
+                ansible.builtin.shell: "echo '{{ vault_password_input.user_input }}' | ansible-vault encrypt {{ playbook_dir }}/group_vars/all/vault.yml --vault-password-file /dev/stdin"
+                delegate_to: localhost
+            when: not vault_chck.stat.exists
+          
+          - name: Create the .lock file
+            ansible.builtin.file:
+              path: "{{ playbook_dir }}/ansible-1st-start.lock"
+              state: touch
+            delegate_to: localhost
+        when: not lock_file.stat.exists

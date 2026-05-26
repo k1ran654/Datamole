@@ -11,15 +11,12 @@
       - github_user: tklas-dtml
         system_user: root
     project_paths:
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin"
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/cache"
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/config"
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media"
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/movies"
-      - "/home/{{ansible_user}}/Docker_stuff/Jellyfin/media/tvshows"
-    vault_paths:
-      - "{{playbook_dir}}/group_vars"
-      - "{{playbook_dir}}/group_vars/all"
+      - "/opt/Docker_stuff/Jellyfin"
+      - "/opt/Docker_stuff/Jellyfin/config"
+      - "/opt/Docker_stuff/Jellyfin/cache"
+      - "/opt/Docker_stuff/Jellyfin/media"
+      - "/opt/Docker_stuff/Jellyfin/media/movies"
+      - "/opt/Docker_stuff/Jellyfin/media/tvshows"
 
   handlers:
     - name: Reload Nginx
@@ -27,54 +24,6 @@
       become: true
 
   tasks:
-    # Initial setup, this should only be run once
-    - name: Check if the lock-file exists
-      ansible.builtin.stat:
-        path: "{{ playbook_dir }}/ansible-1st-start.lock"
-      register: lock_file
-      delegate_to: localhost
-
-    # Block for initial setup (runs only once (if .lock file doesn't exist.))
-    - block:
-        - name: Check if the vault file exists
-          ansible.builtin.stat:
-            path: "{{playbook_dir}}/group_vars/all/vault.yml"
-          register: vault_chck
-          delegate_to: localhost
-        # Block for vault creating and encryption
-        - block:
-            - name: Get user password for the vault
-              ansible.builtin.pause:
-                prompt: "Enter root password for ansible to be able to escalate privileges"
-                echo: false
-              register: vault_password_input
-              delegate_to: localhost
-
-            - name: create vault directories
-              ansible.builtin.file:
-                path: "{{ item }}" 
-                state: directory
-              loop: "{{ vault_paths }}" 
-              delegate_to: localhost
-
-            - name: write vault file
-              ansible.builtin.copy:
-                content: "vault_password: '{{ vault_password_input.user_input }}'"
-                dest: "{{ playbook_dir }}/group_vars/all/vault.yml"
-              delegate_to: localhost
-
-            - name: physically encrypt vault.yml via command line
-              ansible.builtin.shell: "echo '{{ vault_password_input.user_input }}' | ansible-vault encrypt {{ playbook_dir }}/group_vars/all/vault.yml --vault-password-file /dev/stdin"
-              delegate_to: localhost
-          when: not vault_chck.stat.exists
-        
-        - name: Create the .lock file
-          ansible.builtin.file:
-            path: "{{ playbook_dir }}/ansible-1st-start.lock"
-            state: touch
-          delegate_to: localhost
-      when: not lock_file.stat.exists
-
     - name: Fetch SSH keys and add them to root's authorized_keys
       ansible.posix.authorized_key:
         user: "{{ item.system_user }}"
@@ -91,7 +40,7 @@
         hwclock: UTC
       become: true
 
-    - name: pkg update && upgrade ** Sync all system packages
+    - name: pkg update && upgrade
       ansible.builtin.apt:
         force_apt_get: true
         update_cache: true
@@ -103,7 +52,9 @@
       ansible.builtin.apt:
         force_apt_get: true
         name:
+          - nginx
           - docker.io
+          - docker-compose-v2
           - htop
           - vim
           - curl
@@ -129,6 +80,9 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
+        owner: "1000"
+        group: "1000"
+        mode: '0755'
       loop: "{{ project_paths }}"
 
     - name: Copy the Nginx config file for Jellyfin
@@ -141,7 +95,7 @@
     - name: copy docker-compose.yml file to the server
       ansible.builtin.copy:
         src: "{{playbook_dir}}/server-files/Jellyfin/docker-compose.yml"
-        dest: "/home/{{ansible_user}}/Docker_stuff/docker-compose.yml"
+        dest: "/opt/Docker_stuff/docker-compose.yml"
 
     - name: allow ports for http/https
       ansible.builtin.ufw:
@@ -155,5 +109,5 @@
 
     - name: Start the whole docker-compose.yml file
       community.docker.docker_compose_v2:
-        project_src: /home/{{ansible_user}}/Docker_stuff
+        project_src: /opt/Docker_stuff
         state: present
