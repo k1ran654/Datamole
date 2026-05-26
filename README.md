@@ -60,14 +60,16 @@ project/
 
 ## Configuration
 
-1. go into any CLI (this can be done it WSL as well), run ```ssh-keygen``` and generate an SSH key, after that copy the fingerprint it gives you
-2. ssh into your server with ```ssh user@local-server-IP```, then insert the fingerprint you copied into /root/.ssh/authorized_keys with ```sudo nano /root/.ssh/authorized_keys```, so you can run ansible commands with root permissions (not recommended to use for every play)
+1. Go into WSL, run ```ssh-keygen``` and generate an SSH key, after that copy the fingerprint it gives you
+2. ssh into your server with ```ssh user@local-server-IP```, then insert the fingerprint you copied into /root/.ssh/authorized_keys with ```sudo nano /root/.ssh/authorized_keys``` and ```nano ~/your-user/.ssh/authorized_keys```, so you can run ansible commands with root permissions (not recommended to use for every play)
 3. Update your Ansible inventory.ini file with your target server's Local IP (Assuming you are managing the server locally)
-## this next part is for those with a custom domain (you don't need a domain to run it!!)
 4. Visit your domain provider's website and create an A Type record, Host will be the domain name (might be filled automatically), and answer will be the server local/public IP address (depending on where you want to run it).
-5. Generate a SSL certificate with this command inside the server's shell ```sudo certbot certonly --manual --preferred-challenges=dns --email your-email@email.com --agree-tos -d your-domain.com -d *.your-domain.com```, it is going to give you a key (don't lose it, make sure to copy it), after you have done so, go back to your domain provider's website and make another record, this time it's gonna be a TXT record, host will be _acme-challenge.your-domain.com, and the answer will  be the key you copied before this. Then simply wait for a few minutes (depending on your domain provider).
-## More mandatory setup here!!
-6. Finally go into WSL and run ```ansible-playbook -i inventory.ini playbook.yml -k``` in the project folder, its gonna ask you for the SSH and user passwords.
+5. Generate a SSL certificate with this command inside the server's shell ```sudo certbot certonly --manual --preferred-challenges=dns --email your-email@email.com --agree-tos -d your-domain.com -d *.your-domain.com```, it is going to give you a key (don't lose it, make sure to copy it), after you have done so, go back to your domain provider's website and make another record, this time it's gonna be a TXT record, host will be _acme-challenge.your-domain.com, and the answer will  be the key you copied before this. Then simply wait for a few minutes, or visit this site ```https://toolbox.googleapps.com/apps/dig/#TXT/_acme-challenge.your-domain.com``` and check if the answer matches
+6. Finally go into WSL and run ```ansible-playbook init.yml``` in the project folder, This is gonna make your folders on the local machine (use only once or if the vault file gets deleted)
 
 ## Usage
-Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml -k --ask-vault-pass``` while in the project directory and enter the vault password to start it.
+Run the Ansible playbook in WSL with: ```ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass``` while in the project directory and enter the vault password to start it.
+
+## Troubleshooting
+
+1. If you get permission denied when starting the docker containers run ```sudo usermod -aG docker your-user```
